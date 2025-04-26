@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>湯婆婆AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* カスタムスタイル */
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .yubaba-image { max-width: 300px; height: auto; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); margin-top: 1rem; margin-bottom: 1rem; }
+        .yubaba-button { background-color: #8b4513; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: bold; transition: background-color 0.3s; cursor: pointer; border: none; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); }
+        .yubaba-button:hover { background-color: #a0522d; }
+        .yubaba-button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        .yubaba-input { border: 2px solid #8b4513; border-radius: 0.5rem; padding: 0.5rem 1rem; width: 100%; max-width: 400px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); }
+        .yubaba-input:focus { outline: none; border-color: #a0522d; box-shadow: 0 0 0 3px rgba(160, 82, 45, 0.2); }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body class="flex items-center justify-center min-h-screen">
+    <div class="bg-white p-8 rounded-lg shadow-xl text-center max-w-lg w-full">
+        <h1 class="text-3xl font-bold mb-6 text-[#8b4513]">湯婆婆AI</h1>
+        <div id="screen1" class="fade-in">
+            <img id="image-area1" src="picture1.jpg" alt="湯婆婆の画像 (画面1)" class="yubaba-image block mx-auto">
+            <p id="text-area1" class="text-lg mb-4">さあ、契約書だよ。ぐずぐずしないでさっさと名前を書きな！</p>
+            <input type="text" id="name-input" class="yubaba-input mb-4 mx-auto block" placeholder="あなたの名前" maxlength="30">
+            <button id="submit-button" class="yubaba-button">名前を提出する</button>
+        </div>
+        <div id="screen2" class="hidden fade-in">
+             <img id="image-area2" src="picture2.jpg" alt="湯婆婆の画像 (画面2)" class="yubaba-image block mx-auto">
+            <p id="text-area2" class="text-lg mb-4"></p>
+            <button id="next-button" class="yubaba-button">次へ</button>
+        </div>
+        <div id="screen3" class="hidden fade-in">
+            <img id="image-area3" src="picture3.jpg" alt="湯婆婆の画像 (画面3)" class="yubaba-image block mx-auto">
+            <p id="text-area3" class="text-lg mb-4"></p>
+            <button id="restart-button" class="yubaba-button">もう一度</button>
+        </div>
+        <p id="error-message" class="text-red-500 mt-4 font-semibold hidden"></p>
+    </div>
+    <script>
+        const screen1 = document.getElementById('screen1');
+        const screen2 = document.getElementById('screen2');
+        const screen3 = document.getElementById('screen3');
+        const nameInput = document.getElementById('name-input');
+        const submitButton = document.getElementById('submit-button');
+        const nextButton = document.getElementById('next-button');
+        const restartButton = document.getElementById('restart-button');
+        const textArea1 = document.getElementById('text-area1');
+        const textArea2 = document.getElementById('text-area2');
+        const textArea3 = document.getElementById('text-area3');
+        const imageArea1 = document.getElementById('image-area1');
+        const imageArea2 = document.getElementById('image-area2');
+        const imageArea3 = document.getElementById('image-area3');
+        const errorMessage = document.getElementById('error-message');
+        let originalName = '';
+        let newName = '';
+        const screen1ImageUrl = 'picture1.jpg';
+        const screen2ImageUrl = 'picture2.jpg';
+        const screen3ImageUrl = 'picture3.jpg';
+        // --- バックエンドAPIのエンドポイント (ローカルテスト用) ---
+        const apiUrl = 'http://127.0.0.1:8000/api/generate-name'; // ローカルサーバーのアドレス
+
+        submitButton.addEventListener('click', async () => {
+            originalName = nameInput.value.trim();
+            if (!originalName) { showError("名前を入力しておくれ！"); return; }
+            hideError();
+            submitButton.disabled = true; submitButton.textContent = '考え中だよ...';
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: originalName })
+                });
+                if (response.ok) {
+                    const data = await response.json(); newName = data.new_name; showScreen2();
+                } else {
+                    const errorData = await response.json().catch(() => ({ detail: '不明なエラー' }));
+                    console.error('API Error:', response.status, errorData);
+                    showError(`名前の変換に失敗したよ: ${errorData.detail || response.statusText}`);
+                }
+            } catch (error) {
+                console.error('Fetch Error:', error);
+                showError('湯婆婆との通信に失敗したようだね。サーバーは動いているかい？');
+            } finally {
+                submitButton.disabled = false; submitButton.textContent = '名前を提出する';
+            }
+        });
+        nextButton.addEventListener('click', () => { showScreen3(); });
+        restartButton.addEventListener('click', () => { showScreen1(); });
+        function showScreen1() { /* ... (画面1表示処理) ... */ screen1.classList.remove('hidden'); screen2.classList.add('hidden'); screen3.classList.add('hidden'); nameInput.value = ''; originalName = ''; newName = ''; imageArea1.src = screen1ImageUrl; imageArea1.alt = "湯婆婆の画像 (画面1)"; textArea1.textContent = "さあ、契約書だよ。ぐずぐずしないでさっさと名前を書きな！"; hideError(); }
+        function showScreen2() { /* ... (画面2表示処理) ... */ screen1.classList.add('hidden'); screen2.classList.remove('hidden'); screen3.classList.add('hidden'); imageArea2.src = screen2ImageUrl; imageArea2.alt = "湯婆婆の画像 (画面2)"; textArea2.textContent = `フン、${originalName}というのかい？贅沢な名だねぇ。`; }
+        function showScreen3() { /* ... (画面3表示処理) ... */ screen1.classList.add('hidden'); screen2.classList.add('hidden'); screen3.classList.remove('hidden'); imageArea3.src = screen3ImageUrl; imageArea3.alt = "湯婆婆の画像 (画面3)"; textArea3.textContent = `今日からおまえの名前は${newName}だ。いいかい、${newName}だよ。分かったら返事をするんだ、${newName}！！`; }
+        function showError(message) { errorMessage.textContent = message; errorMessage.classList.remove('hidden'); }
+        function hideError() { errorMessage.classList.add('hidden'); }
+        showScreen1();
+        [imageArea1, imageArea2, imageArea3].forEach(img => {
+            img.onerror = function() { /* ... (画像エラー処理) ... */ const altText = this.alt || '画像'; const placeholderUrl = `https://placehold.co/300x200/cccccc/969696?text=${encodeURIComponent(altText + ' 表示不可')}`; if (!this.src.startsWith('https://placehold.co')) { console.error("画像の読み込みに失敗しました:", this.src); } this.src = placeholderUrl; };
+        });
+    </script>
+</body>
+</html>
